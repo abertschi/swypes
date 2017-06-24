@@ -1,0 +1,404 @@
+import requests
+import json
+import datetime
+from tinydb import TinyDB, Query
+
+# get fb token: https://gist.github.com/taseppa/66fc7239c66ef285ecb28b400b556938
+
+FACE_REQ_HEADERS = {}
+FACEBOOK_TOKEN = ''
+FACEBOOK_ID = ''
+TINDER_API_TOKEN = ''
+
+try:
+    from credentials import *
+except ImportError:
+    pass
+
+
+class Ethnicity:
+    ASIAN = 'asian'
+    BLACK = 'black'
+    WHITE = 'white'
+    HISPANIC = 'hispanic'
+    OTHER = 'other'
+
+
+class Gender:
+    MALE = 'male'
+    FEMALE = 'female'
+
+
+class FaceMeta:
+    def __init__(self, meta):
+        self.ethnicity = Ethnicity.OTHER
+        self.ethnicity_certainty = 0
+        self.meta = meta
+        self.gender = None
+        self.is_valid = False
+        self.age = None
+        self.glasses = False
+
+        if 'images' in meta and meta['images']:
+            for image in meta['images']:
+                if 'faces' in image:
+                    for face in image['faces']:
+                        if face['attributes']:
+                            atts = face['attributes']
+                            if atts['gender']['type'] == 'F':
+                                self.gender = Gender.FEMALE
+                            else:
+                                self.gender = Gender.MALE
+
+                            if 'age' in atts:
+                                self.age = atts['age']
+
+                            if 'glasses' in atts:
+                                self.glasses = atts['glasses']
+
+                            max_val = 0
+                            max_key = ''
+                            for ethnic in ['asian', 'white', 'black', 'other', 'hispanic']:
+
+                                if atts[ethnic] > max_val:
+                                    max_key = ethnic
+                                    max_val = atts[ethnic]
+
+                            switcher = {
+                                'asian': Ethnicity.ASIAN,
+                                'white': Ethnicity.WHITE,
+                                'black': Ethnicity.BLACK,
+                                'hispanic': Ethnicity.HISPANIC
+                            }
+
+                            self.ethnicity = switcher.get(max_key, Ethnicity.OTHER)
+                            self.ethnicity_certainty = max_val
+                            self.is_valid = True
+                            break
+
+    @staticmethod
+    def get_face_meta(image_url):
+        endpoint = 'https://api.kairos.com/detect'
+        payload = {
+            'selector': 'ROLL',
+            'image': image_url
+        }
+        resp = requests.post(endpoint, headers=FACE_REQ_HEADERS, json=payload)
+        if resp.status_code == 200:
+            return FaceMeta(resp.json())
+        else:
+            raise Exception('No valid face meta data for ' + image_url)
+
+    def to_json(self):
+        if self.is_valid:
+            return {
+                'ethnicity': self.ethnicity,
+                'ethnicity_certainty': self.ethnicity_certainty,
+                'gender': self.gender,
+                'is_valid': self.is_valid,
+                'age': self.age,
+                'glasses': self.glasses,
+            }
+        else:
+            return {
+                'is_valid': self.is_valid
+            }
+
+
+class TinderWrapper:
+    def __init__(self):
+        self.token = self.get_api_token()
+
+    def get_tinder_req_headers(self):
+        return {
+            'X-Auth-Token': self.token,
+            'Content-type': 'application/json',
+            'User-agent': 'Tinder/3.0.4 (iPhone; iOS 7.1; Scale/2.00)'
+        }
+
+    @staticmethod
+    def get_api_token():
+        url = 'https://api.gotinder.com/auth'
+        body = {
+            'facebook_token': FACEBOOK_TOKEN,
+            'facebook_id': FACEBOOK_ID
+        }
+        resp = requests.post(url, body)
+        if resp.status_code != 200:
+            raise Exception('can not auth with facebook creds: ' + resp.text)
+
+        return resp.json().get('token')
+
+    def get_location(self):
+        resp = requests.get('https://api.gotinder.com/profile', headers=self.get_tinder_req_headers())
+        if not resp.status_code == 200:
+            raise Exception('can not get base location: ' + resp.text)
+        else:
+            data = resp.json()
+
+            lat = None
+            lon = None
+
+            pos = data.get('pos')
+            if pos:
+                lon = pos.get('lon')
+                lat = pos.get('lat')
+            return {
+                'lon': lon,
+                'lat': lat,
+                'city': data.get('pos_info').get('city').get('name'),
+                'country': data.get('pos_info').get('country').get('name')
+            }
+
+    def get_recs(self):
+        base_location = self.get_location()
+        if not base_location:
+            raise Exception('can not fetch base location')
+
+        endpoint = 'https://api.gotinder.com/user/recs'
+        resp = requests.get(endpoint, headers=self.get_tinder_req_headers())
+
+        recs = []
+        json_resp = resp.json()
+        if resp.status_code == 200 and json_resp.get('status') == 200:
+            for rec in json_resp.get('results'):
+
+                pictures = []
+                schools = []
+                jobs = []
+                insta = ''
+
+                for image in rec['photos']:
+                    pictures.append(image['url'])
+                for school in rec.get('schools'):
+                    schools.append(school.get('name'))
+                if 'instagram' in rec:
+                    insta = rec['instagram'].get('username')
+                for job in rec.get('jobs'):
+                    if 'company' in job:
+                        jobs.append(job['company'].get('name'))
+
+                recs.append({
+                    'id': rec.get('_id'),
+                    'base_location': base_location,
+                    'distance_mi': rec.get('distance_mi'),
+                    'bio': rec.get('bio'),
+                    'name': rec.get('name'),
+                    'gender': rec.get('gender'),
+                    'birthdate': rec.get('birth_date'),
+                    'ping_time': rec.get('ping_time'),
+                    'photos': pictures,
+                    'insta': insta,
+                    'jobs': jobs,
+                    'schools': schools
+                })
+        else:
+            if resp.json().get('message') not in ['recs timeout', 'recs exhausted']:
+                raise Exception("problem with tinder api. cant fetch recs. " + json.dumps(resp.json()))
+        return recs
+
+    def like_user(self, user):
+        resp = requests.get(f'https://api.gotinder.com/like/{user["id"]}', headers=self.get_tinder_req_headers())
+        if resp.status_code != 200:
+            msg = json.dumps(resp.json())
+            raise Exception(f'not able to like user {Swypes.pretty_format_user(user)} {msg}')
+        return resp.json()
+
+    def super_like_user(self, user):
+        resp = requests.post(f'https://api.gotinder.com/like/{user["id"]}/super', headers=self.get_tinder_req_headers())
+        if resp.status_code != 200:
+            msg = json.dumps(resp.json())
+            raise Exception(f'not able to super like user {Swypes.pretty_format_user(user)} {msg}')
+        return resp.json()
+
+
+class Storage:
+    def __init__(self):
+        self.db = TinyDB('swypes.json')
+        self.users = self.db.table('user')
+        self.again = self.db.table('again')
+        self.again_super = self.db.table('again_super')
+
+        self.Again_query = Query()
+        self.Again_super_query = Query()
+
+    def mark_user_as_to_be_liked(self, user):
+        self.again.insert(user)
+
+    def mark_user_as_liked(self, user):
+        self.again.remove(self.Again_query.id == user['id'])
+        self.store_user(user)
+
+    def mark_user_as_super_liked(self, user):
+        self.again_super.remove(self.Again_super_query.id == user['id'])
+        self.store_user(user)
+
+    def mark_user_as_to_be_super_liked(self, user):
+        self.again_super.insert(user)
+
+    def store_user(self, user):
+        self.users.insert(user)
+        print(f'saving {Swypes.pretty_format_user(user)}')
+
+
+class Swypes:
+    def __init__(self):
+        self.tinder = TinderWrapper()
+        self.storage = Storage()
+        self.preference_for_super_like = 'asian'
+
+    def super_like_user(self, user):
+        success = True
+        user['liked'] = 'super'
+        print(f'super liking {Swypes.pretty_format_user(user)}')
+
+        super_like = self.tinder.super_like_user(user)
+        if super_like.get('limit_exceeded'):
+            print('Limit exceeded for super likes ' + Swypes.pretty_format_user(user))
+
+            self.normal_like_user(user, store_on_failure=False)
+            success = False
+            self.storage.mark_user_as_to_be_super_liked(user)
+
+        return success
+
+    def normal_like_user(self, user, store_on_failure=True):
+        success = True
+        user['liked'] = 'like'
+        match_data = self.tinder.like_user(user)
+        if match_data and match_data.get('match') is not None and match_data['match'] == True:
+            print('New match on tinder: ' + Swypes.pretty_format_user(user))
+
+        if match_data.get('limit_exceeded'):
+            print('Limit exceeded for likes ' + Swypes.pretty_format_user(user))
+            if store_on_failure:
+                self.storage.mark_user_as_to_be_liked(user)
+            success = False
+
+        return success
+
+    def match_pending_users(self, do_super_like):
+        for user in self.storage.again.all():
+            success = self.normal_like_user(user)
+            if not success: break
+            self.storage.mark_user_as_liked(user)
+
+        for user in self.storage.again_super.all():
+            if do_super_like:
+                success = self.super_like_user(user)
+            else:
+                success = self.normal_like_user(user)
+
+            if not success: break
+
+            self.storage.mark_user_as_super_liked(user)
+
+    def rate_recommodations(self, recs, use_super_like=False):
+        stats_liked = []
+
+        for rec in recs:
+            meta = FaceMeta.get_face_meta(rec['photos'][0])
+            user = rec
+            user['meta'] = meta.to_json()
+            user['fetch'] = str(datetime.datetime.now().date())
+
+            if user['gender'] == 1 and user['meta'].get('gender') == 'female':
+                success = True
+
+                if meta.ethnicity == self.preference_for_super_like and use_super_like:
+                    success = self.super_like_user(user)
+                    if success:
+                        stats_liked.append(user)
+                else:
+                    success = self.normal_like_user(user)
+                    if success:
+                        stats_liked.append(user)
+                if success:
+                    self.storage.store_user(user)
+        return stats_liked
+
+    def create_html(self):
+        content = f'<html><body><h1>{self.preference_for_super_like}</h1>'
+
+        alt = '<h1>Likes</h1>'
+        for user in self.storage.users.all():
+            pics = '<br/>'
+            url = user["photos"][0]
+            for pic in user['photos']:
+                pics += f'<a href="{pic}"><img width="300px" src="{pic}" /></a>'
+
+            data = f'<h1>{user["name"]}</h1>'
+            del user['photos']
+            data += json.dumps(user)
+
+            data = data.replace(",", "<br/>")
+
+            data += pics
+            data = data.replace("\"", "'")
+
+            img = f'<a href="data:text/html,{data}" ><img width="200px" src="{url}" /></a> \n'
+            if user['meta']['ethnicity'] == self.preference_for_super_like:
+                content += img
+            else:
+                alt += img
+
+        content = content + alt
+        text_file = open("out.html", "w")
+        text_file.write(content)
+
+    @staticmethod
+    def pretty_format_user(user):
+        return f'{user["id"]}: {user["name"]} ({user["meta"].get("ethnicity")}) ({user["birthdate"]}) {user["photos"][0]}'
+
+
+def main():
+    do_super_like = True
+    loop_until_no_more_users = False
+    pref = 'asian'
+
+    swypes = Swypes()
+    swypes.create_html()
+
+    swypes.preference_for_super_like = pref
+    print('matching pending users... ')
+    swypes.match_pending_users(do_super_like=True)
+
+    fetch_again = True
+    stats = []
+
+    while fetch_again:
+        print('fetching new recs ...')
+        recs = swypes.tinder.get_recs()
+        print('fetched ' + str(len(recs)) + ' recs')
+
+        if not loop_until_no_more_users:
+            fetch_again = False
+        if not recs:
+            print('no new recommondations available')
+            fetch_again = False
+
+        stats_liked = swypes.rate_recommodations(recs, use_super_like=do_super_like)
+        if stats_liked:
+            stats.extend(stats_liked)
+        else:
+            fetch_again = False
+
+    swypes.create_html()
+
+    print('\n\n ==== stats: =====\n')
+    print('liked: ')
+    for user in [u for u in stats if u['liked'] == 'like']:
+        print(Swypes.pretty_format_user(user))
+
+    print('super liked: ')
+    for user in [u for u in stats if u['liked'] == 'super']:
+        print(Swypes.pretty_format_user(user))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as e:
+        msg = 'swypes exception: ' + str(e)
+        print(msg)
+        raise e
