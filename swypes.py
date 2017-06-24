@@ -4,6 +4,7 @@ import datetime
 from tinydb import TinyDB, Query
 import access_token
 import enc
+import sys
 
 # get fb token: https://gist.github.com/taseppa/66fc7239c66ef285ecb28b400b556938
 
@@ -366,9 +367,8 @@ class Swypes:
         return f'{user["id"]}: {user["name"]} ({user["meta"].get("ethnicity")}) ({user["birthdate"]}) {user["photos"][0]}'
 
 
-def main():
-    do_super_like = False
-    loop_until_no_more_users = False
+def main(loop_until_no_more_users=False):
+    do_super_like = True
     pref = 'asian'
 
     global FACEBOOK_TOKEN, FACEBOOK_PASSWORD, FACEBOOK_USERNAME
@@ -384,7 +384,7 @@ def main():
 
     swypes.preference_for_super_like = pref
     print('matching pending users... ')
-    swypes.match_pending_users(do_super_like=True)
+    swypes.match_pending_users(do_super_like=do_super_like)
 
     fetch_again = True
     stats = []
@@ -420,7 +420,12 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        match_all = False
+        if len(sys.argv) > 1 and sys.argv[1] == 'all':
+            print('Matching as long as users available ...')
+            match_all = True
+
+        main(loop_until_no_more_users=match_all)
     except Exception as e:
         msg = 'swypes exception: ' + str(e)
         print(msg)
