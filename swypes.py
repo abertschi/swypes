@@ -6,9 +6,11 @@ import access_token
 import enc
 import sys
 
-# get fb token: https://gist.github.com/taseppa/66fc7239c66ef285ecb28b400b556938
 
-FACE_REQ_HEADERS = {}
+FACE_REQ_HEADERS = {
+    'app_id': '',
+    'app_key': ''
+}
 FACEBOOK_ID = ''
 ENC_KEY = ''
 FACEBOOK_USERNAME = ''
