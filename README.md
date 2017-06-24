@@ -1,6 +1,6 @@
 # swypes
 
-A quick and dirty python script to match tinder users around you
+A quick and dirty python script to like tinder users around you
 
 ## Features
 - like all girls around your location
