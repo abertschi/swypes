@@ -6,7 +6,6 @@ import access_token
 import enc
 import sys
 
-
 FACE_REQ_HEADERS = {
     'app_id': '',
     'app_key': ''
@@ -23,7 +22,6 @@ try:
     from credentials import *
 except ImportError:
     pass
-
 
 
 class Ethnicity:
@@ -377,13 +375,13 @@ def main(loop_until_no_more_users=False):
     do_super_like = True
     pref = 'asian'
 
-    global FACEBOOK_TOKEN, FACEBOOK_PASSWORD, FACEBOOK_USERNAME
+    global FACEBOOK_TOKEN
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
-        FACEBOOK_USERNAME = enc.decode(ENC_KEY, FACEBOOK_USERNAME)
-        FACEBOOK_PASSWORD = enc.decode(ENC_KEY, FACEBOOK_PASSWORD)
-        FACEBOOK_TOKEN = access_token.get_access_token(FACEBOOK_USERNAME, FACEBOOK_PASSWORD)
+        username = enc.decode(ENC_KEY, FACEBOOK_USERNAME)
+        password = enc.decode(ENC_KEY, FACEBOOK_PASSWORD)
+        FACEBOOK_TOKEN = access_token.get_access_token(username, password)
 
     swypes = Swypes()
     swypes.create_html()
