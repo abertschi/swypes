@@ -2,13 +2,16 @@ import requests
 import json
 import datetime
 from tinydb import TinyDB, Query
+import access_token
+import enc
 
 # get fb token: https://gist.github.com/taseppa/66fc7239c66ef285ecb28b400b556938
 
 FACE_REQ_HEADERS = {}
-FACEBOOK_TOKEN = ''
 FACEBOOK_ID = ''
-TINDER_API_TOKEN = ''
+ENC_KEY = ''
+FACEBOOK_USERNAME = ''
+FACEBOOK_PASSWORD = ''
 
 try:
     from credentials import *
@@ -247,7 +250,7 @@ class Swypes:
         self.storage = Storage()
         self.preference_for_super_like = 'asian'
 
-    def super_like_user(self, user):
+    def super_like_user(self, user, store_on_failure=True):
         success = True
         user['liked'] = 'super'
         print(f'super liking {Swypes.pretty_format_user(user)}')
@@ -256,9 +259,11 @@ class Swypes:
         if super_like.get('limit_exceeded'):
             print('Limit exceeded for super likes ' + Swypes.pretty_format_user(user))
 
-            self.normal_like_user(user, store_on_failure=False)
+            self.normal_like_user(user, False)
             success = False
-            self.storage.mark_user_as_to_be_super_liked(user)
+            if store_on_failure:
+                print('storing ')
+                self.storage.mark_user_as_to_be_super_liked(user)
 
         return success
 
@@ -285,9 +290,9 @@ class Swypes:
 
         for user in self.storage.again_super.all():
             if do_super_like:
-                success = self.super_like_user(user)
+                success = self.super_like_user(user, store_on_failure=False)
             else:
-                success = self.normal_like_user(user)
+                success = self.normal_like_user(user, store_on_failure=False)
 
             if not success: break
 
@@ -318,10 +323,7 @@ class Swypes:
         return stats_liked
 
     def create_html(self):
-        content = f'<html><body><h1>{self.preference_for_super_like}</h1>'
-
-        alt = '<h1>Likes</h1>'
-        for user in self.storage.users.all():
+        def create_user_profile(user):
             pics = '<br/>'
             url = user["photos"][0]
             for pic in user['photos']:
@@ -337,12 +339,25 @@ class Swypes:
             data = data.replace("\"", "'")
 
             img = f'<a href="data:text/html,{data}" ><img width="200px" src="{url}" /></a> \n'
-            if user['meta']['ethnicity'] == self.preference_for_super_like:
-                content += img
-            else:
-                alt += img
+            return img
 
+        content = f'<html><body><h1>{self.preference_for_super_like}</h1>'
+        alt = '<h1>Likes</h1>'
+        for user in self.storage.users.all():
+            profile = create_user_profile(user)
+            if user['meta']['ethnicity'] == self.preference_for_super_like:
+                content += profile
+            else:
+                alt += profile
         content = content + alt
+        content += '<h1>pending super like</h1>'
+        for pending_super in self.storage.again_super.all():
+            content += create_user_profile(pending_super)
+
+        content += '<h1>pending like</h1>'
+        for pending_like in self.storage.again.all():
+            content += create_user_profile(pending_like)
+
         text_file = open("out.html", "w")
         text_file.write(content)
 
@@ -352,9 +367,17 @@ class Swypes:
 
 
 def main():
-    do_super_like = True
+    do_super_like = False
     loop_until_no_more_users = False
     pref = 'asian'
+
+    global FACEBOOK_TOKEN, FACEBOOK_PASSWORD, FACEBOOK_USERNAME
+
+    if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
+        print('fetching fb token')
+        FACEBOOK_USERNAME = enc.decode(ENC_KEY, FACEBOOK_USERNAME)
+        FACEBOOK_PASSWORD = enc.decode(ENC_KEY, FACEBOOK_PASSWORD)
+        FACEBOOK_TOKEN = access_token.get_access_token(FACEBOOK_USERNAME, FACEBOOK_PASSWORD)
 
     swypes = Swypes()
     swypes.create_html()
