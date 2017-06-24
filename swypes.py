@@ -12,14 +12,18 @@ FACE_REQ_HEADERS = {
     'app_key': ''
 }
 FACEBOOK_ID = ''
-ENC_KEY = ''
 FACEBOOK_USERNAME = ''
 FACEBOOK_PASSWORD = ''
+ENC_KEY = ''
+
+DATABASE = './swypes.json'
+HTML_EXPORT = './swypes.html'
 
 try:
     from credentials import *
 except ImportError:
     pass
+
 
 
 class Ethnicity:
@@ -220,7 +224,7 @@ class TinderWrapper:
 
 class Storage:
     def __init__(self):
-        self.db = TinyDB('swypes.json')
+        self.db = TinyDB(DATABASE)
         self.users = self.db.table('user')
         self.again = self.db.table('again')
         self.again_super = self.db.table('again_super')
@@ -361,7 +365,7 @@ class Swypes:
         for pending_like in self.storage.again.all():
             content += create_user_profile(pending_like)
 
-        text_file = open("out.html", "w")
+        text_file = open(HTML_EXPORT, "w")
         text_file.write(content)
 
     @staticmethod
