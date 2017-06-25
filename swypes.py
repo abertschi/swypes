@@ -5,6 +5,7 @@ from tinydb import TinyDB, Query
 import access_token
 import enc
 import sys
+import argparse
 
 FACE_REQ_HEADERS = {
     'app_id': '',
@@ -14,6 +15,7 @@ FACEBOOK_ID = ''
 FACEBOOK_USERNAME = ''
 FACEBOOK_PASSWORD = ''
 ENC_KEY = ''
+FACEBOOK_TOKEN = ''
 
 DATABASE = './swypes.json'
 HTML_EXPORT = './swypes.html'
@@ -115,7 +117,10 @@ class FaceMeta:
 
 class TinderWrapper:
     def __init__(self):
-        self.token = self.get_api_token()
+        self.token = 'not-fetched'
+
+    def fetch_token(self, token, id):
+        self.token = self.get_api_token(token, id)
 
     def get_tinder_req_headers(self):
         return {
@@ -125,11 +130,11 @@ class TinderWrapper:
         }
 
     @staticmethod
-    def get_api_token():
+    def get_api_token(token, id):
         url = 'https://api.gotinder.com/auth'
         body = {
-            'facebook_token': FACEBOOK_TOKEN,
-            'facebook_id': FACEBOOK_ID
+            'facebook_token': token,
+            'facebook_id': id
         }
         resp = requests.post(url, body)
         if resp.status_code != 200:
@@ -226,7 +231,7 @@ class Storage:
         self.users = self.db.table('user')
         self.again = self.db.table('again')
         self.again_super = self.db.table('again_super')
-
+        self.User_query = Query()
         self.Again_query = Query()
         self.Again_super_query = Query()
 
@@ -241,12 +246,27 @@ class Storage:
         self.again_super.remove(self.Again_super_query.id == user['id'])
         self.store_user(user)
 
-    def mark_user_as_to_be_super_liked(self, user):
-        self.again_super.insert(user)
+    def mark_user_as_to_be_super_liked(self, user, user_id=None):
+        to_like = user
+        if user_id:
+            to_like = self.get_user(user_id)
+
+        self.again_super.insert(to_like)
 
     def store_user(self, user):
         self.users.insert(user)
         print(f'saving {Swypes.pretty_format_user(user)}')
+
+    def remove_pending(self, user_id):
+        self.again_super.remove(self.Again_super_query.id == user_id)
+        self.again.remove(self.Again_query.id == user_id)
+
+    def get_user(self, user_id):
+        user = self.users.search(self.User_query.id == user_id)
+        if not user:
+            raise Exception('user not found with userid: ' + user_id)
+        else:
+            return user[0]
 
 
 class Swypes:
@@ -267,7 +287,6 @@ class Swypes:
             self.normal_like_user(user, False)
             success = False
             if store_on_failure:
-                print('storing ')
                 self.storage.mark_user_as_to_be_super_liked(user)
 
         return success
@@ -371,11 +390,32 @@ class Swypes:
         return f'{user["id"]}: {user["name"]} ({user["meta"].get("ethnicity")}) ({user["birthdate"]}) {user["photos"][0]}'
 
 
-def main(loop_until_no_more_users=False):
-    do_super_like = True
-    pref = 'asian'
+if __name__ == '__main__':
 
-    global FACEBOOK_TOKEN
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--all', action='store_true', default=False)  # loop until no more users
+    parser.add_argument('--remove-pending')
+    parser.add_argument('--super-like-user')
+    parser.add_argument('--super-like-ethnicity', default='asian')
+    parser.add_argument('--no-super-like', default=False)
+    args = parser.parse_args()
+
+    swypes = Swypes()
+    swypes.create_html()
+
+    if args.remove_pending:
+        swypes.storage.remove_pending(str(args.remove_pending))
+        print(f'Remvoing user {args.remove_pending} from pending like/super like')
+        swypes.create_html()
+        exit(0)
+
+    if args.super_like_user:
+        swypes.storage.mark_user_as_to_be_super_liked(user=None, user_id=str(args.super_like_user))
+        print('Super liking user in next run: ' + args.super_like_user)
+        swypes.create_html()
+        exit(0)
+
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
@@ -383,12 +423,10 @@ def main(loop_until_no_more_users=False):
         password = enc.decode(ENC_KEY, FACEBOOK_PASSWORD)
         FACEBOOK_TOKEN = access_token.get_access_token(username, password)
 
-    swypes = Swypes()
-    swypes.create_html()
-
-    swypes.preference_for_super_like = pref
+    swypes.tinder.fetch_token(FACEBOOK_TOKEN, FACEBOOK_ID)
+    swypes.preference_for_super_like = args.super_like_ethnicity
     print('matching pending users... ')
-    swypes.match_pending_users(do_super_like=do_super_like)
+    swypes.match_pending_users(do_super_like=not args.no_super_like)
 
     fetch_again = True
     stats = []
@@ -398,13 +436,13 @@ def main(loop_until_no_more_users=False):
         recs = swypes.tinder.get_recs()
         print('fetched ' + str(len(recs)) + ' recs')
 
-        if not loop_until_no_more_users:
+        if not args.all:
             fetch_again = False
         if not recs:
             print('no new recommondations available')
             fetch_again = False
 
-        stats_liked = swypes.rate_recommodations(recs, use_super_like=do_super_like)
+        stats_liked = swypes.rate_recommodations(recs, use_super_like=not args.no_super_like)
         if stats_liked:
             stats.extend(stats_liked)
         else:
@@ -420,17 +458,3 @@ def main(loop_until_no_more_users=False):
     print('super liked: ')
     for user in [u for u in stats if u['liked'] == 'super']:
         print(Swypes.pretty_format_user(user))
-
-
-if __name__ == '__main__':
-    try:
-        match_all = False
-        if len(sys.argv) > 1 and sys.argv[1] == 'all':
-            print('Matching as long as users available ...')
-            match_all = True
-
-        main(loop_until_no_more_users=match_all)
-    except Exception as e:
-        msg = 'swypes exception: ' + str(e)
-        print(msg)
-        raise e
