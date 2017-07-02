@@ -290,6 +290,14 @@ class Storage:
         max_prio = max_prio + 1
         self.again_super.update({'match_prio': max_prio}, self.Again_super_query.id == user_id)
 
+    def get_pending_super_likes_by_match_prio(self):
+        return sorted(self.storage.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        u.get('match_prio') else 0)
+
+    def get_pending_likes_by_match_prio(self):
+        return sorted(self.storage.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        u.get('match_prio') else 0)
+
 
 class Swypes:
     def __init__(self):
@@ -401,11 +409,12 @@ class Swypes:
                 alt += profile
         content = content + alt
         content += '<h1>pending super like</h1>'
-        for pending_super in self.storage.again_super.all():
+
+        for pending_super in self.storage.get_pending_super_likes_by_match_prio():
             content += create_user_profile(pending_super)
 
         content += '<h1>pending like</h1>'
-        for pending_like in self.storage.again.all():
+        for pending_like in self.storage.get_pending_likes_by_match_prio():
             content += create_user_profile(pending_like)
 
         text_file = open(HTML_EXPORT, "w")
