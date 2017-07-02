@@ -268,6 +268,28 @@ class Storage:
         else:
             return user[0]
 
+    def is_super_like_pending(self, user_id):
+        user = self.again_super.search(self.Again_super_query.id == user_id)
+        return True if user else False
+
+    def is_normal_like_pending(self, user_id):
+        user = self.again.search(self.Again_query.id == user_id)
+        return True if user else False
+
+    def prioritize_super_pending(self, user_id):
+        user = self.again_super.search(self.Again_super_query.id == user_id)
+        if not user:
+            raise Exception('user: ' + user_id + ' not found in super pending')
+
+        max_prio = 0
+        for user in self.again_super.all():
+            prio = user.get('match_prio')
+            if prio and prio > max_prio:
+                max_prio = prio
+
+        max_prio = max_prio + 1
+        self.again_super.update({'match_prio': max_prio}, self.Again_super_query.id == user_id)
+
 
 class Swypes:
     def __init__(self):
@@ -307,12 +329,16 @@ class Swypes:
         return success
 
     def match_pending_users(self, do_super_like):
-        for user in self.storage.again.all():
+        pending = sorted(self.storage.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        u.get('match_prio') else 0)
+        for user in pending:
             success = self.normal_like_user(user)
             if not success: break
             self.storage.mark_user_as_liked(user)
 
-        for user in self.storage.again_super.all():
+        pending_super = sorted(self.storage.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        u.get('match_prio') else 0)
+        for user in pending_super:
             if do_super_like:
                 success = self.super_like_user(user, store_on_failure=False)
             else:
@@ -399,6 +425,7 @@ if __name__ == '__main__':
     parser.add_argument('--super-like-user')
     parser.add_argument('--super-like-ethnicity', default='asian')
     parser.add_argument('--no-super-like', default=False)
+    parser.add_argument('--prioritize')
     args = parser.parse_args()
 
     swypes = Swypes()
@@ -410,12 +437,17 @@ if __name__ == '__main__':
         swypes.create_html()
         exit(0)
 
+    if args.prioritize:
+        print(f'Prioritizing user {args.prioritize} in pending user users')
+        swypes.storage.prioritize_super_pending(str(args.prioritize))
+        swypes.create_html()
+        exit(0)
+
     if args.super_like_user:
         swypes.storage.mark_user_as_to_be_super_liked(user=None, user_id=str(args.super_like_user))
         print('Super liking user in next run: ' + args.super_like_user)
         swypes.create_html()
         exit(0)
-
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
