@@ -291,11 +291,11 @@ class Storage:
         self.again_super.update({'match_prio': max_prio}, self.Again_super_query.id == user_id)
 
     def get_pending_super_likes_by_match_prio(self):
-        return sorted(self.storage.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        return sorted(self.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
         u.get('match_prio') else 0)
 
     def get_pending_likes_by_match_prio(self):
-        return sorted(self.storage.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        return sorted(self.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
         u.get('match_prio') else 0)
 
 
