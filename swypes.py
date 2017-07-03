@@ -6,6 +6,8 @@ import access_token
 import enc
 import sys
 import argparse
+import urllib
+import os
 
 FACE_REQ_HEADERS = {
     'app_id': '',
@@ -380,6 +382,41 @@ class Swypes:
                     self.storage.store_user(user)
         return stats_liked
 
+    def download_pictures(self):
+        dir = './pictures'
+        dir = os.path.abspath(dir)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        @staticmethod
+        def download(users):
+            for user in users:
+                for photo in user['photos']:
+                    url = photo
+                    parts = url.split('/')
+                    photoname = parts[len(parts) - 1]
+                    try:
+                        filename = user['id'] + '_' + photoname
+                        path = dir + '/' + filename
+                        if os.path.isfile(path):
+                            print('skipping because exists: ' + path)
+                            continue
+
+                        request = urllib.request.Request(url, None)  # The assembled request
+                        img = urllib.request.urlopen(request)
+
+                        f = open(path, 'wb')
+                        f.write(img.read())
+                        f.close()
+                        print('downloaded ' + path)
+
+                    except Exception as e:
+                        print(e)
+
+        download(self.storage.users.get())
+        download(self.storage.again.get())
+        download(self.storage.again_super.get())
+
     def create_html(self):
         def create_user_profile(user):
             pics = '<br/>'
@@ -435,6 +472,8 @@ if __name__ == '__main__':
     parser.add_argument('--super-like-ethnicity', default='asian')
     parser.add_argument('--no-super-like', default=False)
     parser.add_argument('--prioritize')
+    parser.add_argument('--download-pictures', default=False, action='store_true')
+
     args = parser.parse_args()
 
     swypes = Swypes()
@@ -444,6 +483,11 @@ if __name__ == '__main__':
         swypes.storage.remove_pending(str(args.remove_pending))
         print(f'Remvoing user {args.remove_pending} from pending like/super like')
         swypes.create_html()
+        exit(0)
+
+    if args.download_pictures:
+        print('downloading pictures')
+        swypes.download_pictures()
         exit(0)
 
     if args.prioritize:
