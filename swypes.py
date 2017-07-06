@@ -246,6 +246,7 @@ class Storage:
 
     def mark_user_as_super_liked(self, user):
         self.again_super.remove(self.Again_super_query.id == user['id'])
+        user['liked'] = 'super'
         self.store_user(user)
 
     def mark_user_as_to_be_super_liked(self, user, user_id=None):
@@ -253,6 +254,7 @@ class Storage:
         if user_id:
             to_like = self.get_user(user_id)
 
+        to_like['liked'] = 'super'
         self.again_super.insert(to_like)
 
     def store_user(self, user):
