@@ -180,12 +180,17 @@ class TinderWrapper:
             for rec in json_resp.get('results'):
 
                 pictures = []
+                pictures_small = []
                 schools = []
                 jobs = []
                 insta = ''
 
                 for image in rec['photos']:
                     pictures.append(image['url'])
+                    for process_files in rec['processedFiles']:
+                        if process_files.get('width') == 640:
+                            pictures_small.append(process_files['url'])
+
                 for school in rec.get('schools'):
                     schools.append(school.get('name'))
                 if 'instagram' in rec:
@@ -204,6 +209,7 @@ class TinderWrapper:
                     'birthdate': rec.get('birth_date'),
                     'ping_time': rec.get('ping_time'),
                     'photos': pictures,
+                    'photos_small': pictures_small,
                     'insta': insta,
                     'jobs': jobs,
                     'schools': schools
@@ -441,6 +447,12 @@ class Swypes:
             data = data.replace("\"", "'")
             data = data.strip()
             data = data.replace('\n', '')
+
+            splits = url.split('/')
+            filename = splits[len(splits) - 1]
+            filename = '640x640_' + filename
+            splits[len(splits) - 1] = filename
+            url = "/".join(splits)
 
             img = f'<a href="data:text/html,{data}"' \
                   f'><img width="200px" src="{url}" /></a> \n'
