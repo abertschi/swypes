@@ -20,8 +20,8 @@ FACEBOOK_PASSWORD = ''
 ENC_KEY = ''
 FACEBOOK_TOKEN = ''
 
-DATABASE = './swypes.json'
-HTML_EXPORT = './swypes.html'
+DATABASE = 'swypes.json'
+HTML_EXPORT = 'swypes.html'
 
 try:
     from credentials import *
