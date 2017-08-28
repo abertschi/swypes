@@ -436,7 +436,8 @@ class Swypes:
             data += pics
             data = data.replace("\"", "'")
 
-            img = f'<a href="data:text/html,{data}" ><img width="200px" src="{url}" /></a> \n'
+            img = f'<a href="data:text/html,{data.encode("ascii", "xmlcharrefreplace")}"' \
+                  f'><img width="200px" src="{url}" /></a> \n'
             return img
 
         def filter_user_by_date(users, date=None):
