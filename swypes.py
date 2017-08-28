@@ -441,7 +441,7 @@ class Swypes:
 
         def filter_user_by_date(users, date=None):
             if date:
-                return [u for u in users if u.get('fetch') > str(date.date())]
+                return [u for u in users if u.get('fetch') and str(u.get('fetch')) > str(date.date())]
             else:
                 return users
 
