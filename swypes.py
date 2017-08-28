@@ -448,13 +448,13 @@ class Swypes:
             data = data.strip()
             data = data.replace('\n', '')
 
-            splits = url.split('/')
-            filename = splits[len(splits) - 1]
-            filename = '640x640_' + filename
-            splits[len(splits) - 1] = filename
+            # splits = url.split('/')
+            # filename = splits[len(splits) - 1]
+            # filename = '640x640_' + filename
+            # splits[len(splits) - 1] = filename
+            #
+            # url = "/".join(splits)
 
-            url = "/".join(splits)
-            print(url)
             img = f'<a href="data:text/html,{data}"' \
                   f'><img width="200px" src="{url}" /></a> \n'
             return img
