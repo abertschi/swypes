@@ -520,7 +520,9 @@ if __name__ == '__main__':
 
     if args.create_html:
         d = datetime.today() - timedelta(days=args.create_html)
+        print("Generating html export with users fetched until " + str(d))
         swypes.create_html(dateFrom=d)
+        exit(0)
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
