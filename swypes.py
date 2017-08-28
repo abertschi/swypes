@@ -8,6 +8,7 @@ import sys
 import argparse
 import urllib
 import os
+from datetime import datetime, timedelta, time
 
 FACE_REQ_HEADERS = {
     'app_id': '',
@@ -419,7 +420,7 @@ class Swypes:
         download(self.storage.again.get())
         download(self.storage.again_super.get())
 
-    def create_html(self):
+    def create_html(self, dateFrom=None):
         def create_user_profile(user):
             pics = '<br/>'
             url = user["photos"][0]
@@ -438,9 +439,16 @@ class Swypes:
             img = f'<a href="data:text/html,{data}" ><img width="200px" src="{url}" /></a> \n'
             return img
 
+        def filter_user_by_date(users, date=None):
+            if date:
+                return [u for u in users if u.get('fetch') > str(date.date())]
+            else:
+                return users
+
         content = f'<html><body><h1>{self.preference_for_super_like}</h1>'
         alt = '<h1>Likes</h1>'
-        for user in self.storage.users.all():
+
+        for user in filter_user_by_date(self.storage.users.all(), dateFrom):
             profile = create_user_profile(user)
             if user['meta']['ethnicity'] == self.preference_for_super_like:
                 content += profile
@@ -449,14 +457,18 @@ class Swypes:
         content = content + alt
         content += '<h1>pending super like</h1>'
 
-        for pending_super in self.storage.get_pending_super_likes_by_match_prio():
+        for pending_super in filter_user_by_date(self.storage.get_pending_super_likes_by_match_prio(), dateFrom):
             content += create_user_profile(pending_super)
 
         content += '<h1>pending like</h1>'
-        for pending_like in self.storage.get_pending_likes_by_match_prio():
+        for pending_like in filter_user_by_date(self.storage.get_pending_likes_by_match_prio(), dateFrom):
             content += create_user_profile(pending_like)
 
-        text_file = open(HTML_EXPORT, "w")
+        file_prefix = ''
+        if dateFrom:
+            file_prefix = str(dateFrom.date()) + "_"
+
+        text_file = open(file_prefix + HTML_EXPORT, "w")
         text_file.write(content)
 
     @staticmethod
@@ -475,6 +487,8 @@ if __name__ == '__main__':
     parser.add_argument('--no-super-like', default=False)
     parser.add_argument('--prioritize')
     parser.add_argument('--download-pictures', default=False, action='store_true')
+    parser.add_argument('--create-html', default=False, type=int, help="Create html with entries X numbers back",
+                        )
 
     args = parser.parse_args()
 
@@ -503,6 +517,10 @@ if __name__ == '__main__':
         print('Super liking user in next run: ' + args.super_like_user)
         swypes.create_html()
         exit(0)
+
+    if args.create_html:
+        d = datetime.today() - timedelta(days=args.create_html)
+        swypes.create_html(dateFrom=d)
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
