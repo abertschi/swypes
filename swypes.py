@@ -422,6 +422,9 @@ class Swypes:
 
     def create_html(self, dateFrom=None):
         def create_user_profile(user):
+            def encode(str):
+                return str.encode("ascii", "xmlcharrefreplace")
+
             pics = '<br/>'
             url = user["photos"][0]
             for pic in user['photos']:
@@ -434,9 +437,12 @@ class Swypes:
             data = data.replace(",", "<br/>")
 
             data += pics
+            data = encode(data)
             data = data.replace("\"", "'")
+            data = data.strip()
+            data = data.replace('\n', '')
 
-            img = f'<a href="data:text/html,{data.encode("ascii", "xmlcharrefreplace")}"' \
+            img = f'<a href="data:text/html,{data}"' \
                   f'><img width="200px" src="{url}" /></a> \n'
             return img
 
