@@ -464,11 +464,11 @@ class Swypes:
         for pending_like in filter_user_by_date(self.storage.get_pending_likes_by_match_prio(), dateFrom):
             content += create_user_profile(pending_like)
 
-        file_prefix = ''
+        file_prefix = HTML_EXPORT
         if dateFrom:
-            file_prefix = str(dateFrom.date()) + "_"
+            file_prefix = file_prefix + str(dateFrom.date()) + ".html"
 
-        text_file = open(file_prefix + HTML_EXPORT, "w")
+        text_file = open(file_prefix, "w+")
         text_file.write(content)
 
     @staticmethod
