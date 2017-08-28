@@ -423,7 +423,7 @@ class Swypes:
     def create_html(self, dateFrom=None):
         def create_user_profile(user):
             def encode(str):
-                return str.encode("ascii", "xmlcharrefreplace")
+                return str(str.encode("ascii", "xmlcharrefreplace"))
 
             pics = '<br/>'
             url = user["photos"][0]
