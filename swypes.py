@@ -187,9 +187,9 @@ class TinderWrapper:
 
                 for image in rec['photos']:
                     pictures.append(image['url'])
-                    for process_files in rec['processedFiles']:
-                        if process_files.get('width') == 640:
-                            pictures_small.append(process_files['url'])
+                    # for process_files in rec.get('processedFiles'):
+                    #     if process_files.get('width') == 640:
+                    #         pictures_small.append(process_files['url'])
 
                 for school in rec.get('schools'):
                     schools.append(school.get('name'))
