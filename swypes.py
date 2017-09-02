@@ -374,7 +374,7 @@ class Swypes:
             meta = FaceMeta.get_face_meta(rec['photos'][0])
             user = rec
             user['meta'] = meta.to_json()
-            user['fetch'] = str(datetime.datetime.now().date())
+            user['fetch'] = str(datetime.now().date())
 
             if user['gender'] == 1 and user['meta'].get('gender') == 'female':
                 success = True
