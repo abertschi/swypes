@@ -159,11 +159,25 @@ class TinderWrapper:
             if pos:
                 lon = pos.get('lon')
                 lat = pos.get('lat')
+
+            city = ''
+            country = ''
+
+            if data.get('pos_info') and \
+                    data.get('pos_info').get('city') and \
+                    data.get('pos_info').get('city').get('name'):
+                city = data.get('pos_info').get('city').get('name')
+
+            if data.get('pos_info') and \
+                    data.get('pos_info').get('country') and \
+                    data.get('pos_info').get('country').get('name'):
+                country = data.get('pos_info').get('country').get('name')
+
             return {
                 'lon': lon,
                 'lat': lat,
-                'city': data.get('pos_info').get('city').get('name'),
-                'country': data.get('pos_info').get('country').get('name')
+                'city': city,
+                'country': country
             }
 
     def get_recs(self):
