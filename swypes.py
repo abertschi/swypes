@@ -9,6 +9,11 @@ import argparse
 import urllib
 import os
 from datetime import datetime, timedelta, time
+from telegram.ext import Updater, CommandHandler
+
+import telegram
+
+import logging
 
 FACE_REQ_HEADERS = {
     'app_id': '',
@@ -19,6 +24,8 @@ FACEBOOK_USERNAME = ''
 FACEBOOK_PASSWORD = ''
 ENC_KEY = ''
 FACEBOOK_TOKEN = ''
+TELEGRAM_TOKEN = ''
+CHAT_ID = ''
 
 DATABASE = 'swypes.json'
 HTML_EXPORT = 'swypes.html'
@@ -362,12 +369,15 @@ class Swypes:
         return success
 
     def match_pending_users(self, do_super_like):
+        successful_super = []
+        successful_normal = []
         pending = sorted(self.storage.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
         u.get('match_prio') else 0)
         for user in pending:
             success = self.normal_like_user(user)
             if not success: break
             self.storage.mark_user_as_liked(user)
+            successful_normal.append(user)
 
         pending_super = sorted(self.storage.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
         u.get('match_prio') else 0)
@@ -378,8 +388,10 @@ class Swypes:
                 success = self.normal_like_user(user, store_on_failure=False)
 
             if not success: break
-
             self.storage.mark_user_as_super_liked(user)
+            successful_super.append(user)
+
+        return successful_normal, successful_super
 
     def rate_recommodations(self, recs, use_super_like=False):
         stats_liked = []
@@ -510,7 +522,30 @@ class Swypes:
         return f'{user["id"]}: {user["name"]} ({user["meta"].get("ethnicity")}) ({user["birthdate"]}) {user["photos"][0]}'
 
 
+class Bot:
+    def __init__(self, token, chat_id):
+        self.chat_id = chat_id
+        self.bot = telegram.Bot(token=token)
+
+        self.updater = Updater(token)
+        self.updater.dispatcher.add_handler(CommandHandler('hello', self.hello))
+
+        self.updater.start_polling()
+
+    def idle(self):
+        self.updater.idle()
+
+    def hello(self, bot, update):
+        update.message.reply_text(
+            'Hello {}'.format(update.message.chat_id))
+
+    def send(self):
+        self.bot.send_message(chat_id=self.chat_id, text="I'm sorry Dave I'm afraid I can't do that.")
+
+
 if __name__ == '__main__':
+
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     parser = argparse.ArgumentParser()
 
@@ -528,6 +563,10 @@ if __name__ == '__main__':
 
     swypes = Swypes()
     swypes.create_html()
+
+    bot = None
+    if TELEGRAM_TOKEN:
+        bot = Bot(token=TELEGRAM_TOKEN, chat_id=CHAT_ID)
 
     if args.remove_pending:
         swypes.storage.remove_pending(str(args.remove_pending))
@@ -567,7 +606,7 @@ if __name__ == '__main__':
     swypes.tinder.fetch_token(FACEBOOK_TOKEN, FACEBOOK_ID)
     swypes.preference_for_super_like = args.super_like_ethnicity
     print('matching pending users... ')
-    swypes.match_pending_users(do_super_like=not args.no_super_like)
+    normal_liked, super_liked = swypes.match_pending_users(do_super_like=not args.no_super_like)
 
     fetch_again = True
     stats = []
@@ -591,11 +630,33 @@ if __name__ == '__main__':
 
     swypes.create_html()
 
+
+    def notify_chat(user):
+        if bot:
+            msg = '{} ({})\n{}\n{}'.format(user["name"], user['birthdate'], user["id"], user['photos'][0])
+            print(msg)
+
+            bot.bot.send_message(chat_id=CHAT_ID,
+                                 text=msg)
+
+
     print('\n\n ==== stats: =====\n')
     print('liked: ')
     for user in [u for u in stats if u['liked'] == 'like']:
         print(Swypes.pretty_format_user(user))
+        notify_chat(user)
+
+    for u in normal_liked:
+        print(Swypes.pretty_format_user(u))
+        notify_chat(u)
 
     print('super liked: ')
     for user in [u for u in stats if u['liked'] == 'super']:
         print(Swypes.pretty_format_user(user))
+        notify_chat(user)
+
+    for u in super_liked:
+        print(Swypes.pretty_format_user(u))
+        notify_chat(u)
+
+    exit(0)
