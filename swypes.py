@@ -659,5 +659,8 @@ if __name__ == '__main__':
         print(Swypes.pretty_format_user(u))
         notify_chat(u)
 
-    exit(0)
+    print('killing script')
     os.kill(os.getpid(), signal.SIGKILL)
+    exit(0)
+    print('this should not happen')
+
