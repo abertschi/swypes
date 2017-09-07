@@ -633,8 +633,9 @@ if __name__ == '__main__':
 
     def notify_chat(user):
         if bot:
-            msg = '{} ({})\n{}\n{}'.format(user["name"], user['birthdate'], user["id"], user['photos'][0])
-            print(msg)
+            msg = '{} ({})\n{}\n{}\n{}'.format(user["name"], user['birthdate'], user["id"], user['photos'][0],
+                                               user["bio"])
+            # print(msg)
 
             bot.bot.send_message(chat_id=CHAT_ID,
                                  text=msg)
