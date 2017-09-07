@@ -10,7 +10,7 @@ import urllib
 import os
 from datetime import datetime, timedelta, time
 from telegram.ext import Updater, CommandHandler
-
+import signal
 import telegram
 
 import logging
@@ -660,3 +660,4 @@ if __name__ == '__main__':
         notify_chat(u)
 
     exit(0)
+    os.kill(os.getpid(), signal.SIGKILL)
