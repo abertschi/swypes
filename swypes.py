@@ -564,10 +564,6 @@ if __name__ == '__main__':
     swypes = Swypes()
     swypes.create_html()
 
-    bot = None
-    if TELEGRAM_TOKEN:
-        bot = Bot(token=TELEGRAM_TOKEN, chat_id=CHAT_ID)
-
     if args.remove_pending:
         swypes.storage.remove_pending(str(args.remove_pending))
         print(f'Remvoing user {args.remove_pending} from pending like/super like')
@@ -596,6 +592,10 @@ if __name__ == '__main__':
         print("Generating html export with users fetched until " + str(d))
         swypes.create_html(dateFrom=d)
         exit(0)
+
+    bot = None
+    if TELEGRAM_TOKEN:
+        bot = Bot(token=TELEGRAM_TOKEN, chat_id=CHAT_ID)
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
@@ -664,4 +664,3 @@ if __name__ == '__main__':
     os.kill(os.getpid(), signal.SIGKILL)
     exit(0)
     print('this should not happen')
-
