@@ -597,7 +597,7 @@ class SuperBot:
                                   text=msg)
 
     def msg_pending(self, user):
-        self.msg_pending(user, 'pending_user')
+        self.msg(user, 'pending_user')
 
 
 if __name__ == '__main__':
