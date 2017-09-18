@@ -682,7 +682,7 @@ if __name__ == '__main__':
             print('no new recommondations available')
             fetch_again = False
 
-        stats_liked = swypes.rate_recommodations(recs, use_super_like=not args.no_super_like)
+        stats_liked = swypes.rate_recommodations(recs, use_super_like=not args.no_super_like, superBot=superBot)
         if stats_liked:
             stats.extend(stats_liked)
         else:
