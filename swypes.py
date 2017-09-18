@@ -15,6 +15,7 @@ import telegram
 
 import logging
 
+USE_FACE_REQ = False
 FACE_REQ_HEADERS = {
     'app_id': '',
     'app_key': ''
@@ -24,6 +25,8 @@ FACEBOOK_USERNAME = ''
 FACEBOOK_PASSWORD = ''
 ENC_KEY = ''
 FACEBOOK_TOKEN = ''
+
+USE_TELEGRAM = False
 TELEGRAM_TOKEN = ''
 CHAT_ID = ''
 
@@ -542,6 +545,16 @@ class Bot:
     def send(self):
         self.bot.send_message(chat_id=self.chat_id, text="I'm sorry Dave I'm afraid I can't do that.")
 
+    def trace_user_in_chat(user):
+        msg = '{}\n{}\n{}\n{}\n{}'.format(user["name"], user['birthdate'], user["id"],
+                                          'fetched: ' + user["fetch"],
+                                          'status: ' + user.get('liked'),
+                                          user["meta"].get("ethnicity"),
+                                          user['photos'][0],
+                                          user["bio"])
+        bot.bot.send_message(chat_id=CHAT_ID,
+                             text=msg)
+
 
 if __name__ == '__main__':
 
@@ -594,8 +607,8 @@ if __name__ == '__main__':
         exit(0)
 
     bot = None
-    if TELEGRAM_TOKEN:
-        bot = Bot(token=TELEGRAM_TOKEN, chat_id=CHAT_ID)
+    if USE_TELEGRAM:
+        bot = Bot(token=TELEGRAM_BOT_LIKE_TOKEN, chat_id=CHAT_ID)
 
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
@@ -633,12 +646,7 @@ if __name__ == '__main__':
 
     def notify_chat(user):
         if bot:
-            msg = '{} ({})\n{}\n{}\n{}'.format(user["name"], user['birthdate'], user["id"], user['photos'][0],
-                                               user["bio"])
-            # print(msg)
-
-            bot.bot.send_message(chat_id=CHAT_ID,
-                                 text=msg)
+            bot.trace_user_in_chat(user)
 
 
     print('\n\n ==== stats: =====\n')
