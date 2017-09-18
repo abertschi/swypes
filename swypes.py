@@ -27,7 +27,11 @@ ENC_KEY = ''
 FACEBOOK_TOKEN = ''
 
 USE_TELEGRAM = False
+USE_TELEGRAM_SUPER = True
+
+TELEGRAM_BOT_SUPER_TOKEN = ''
 TELEGRAM_BOT_LIKE_TOKEN = ''
+
 CHAT_ID = ''
 
 DATABASE = 'swypes.json'
@@ -340,7 +344,7 @@ class Swypes:
         self.storage = Storage()
         self.preference_for_super_like = 'asian'
 
-    def super_like_user(self, user, store_on_failure=True):
+    def super_like_user(self, user, store_on_failure=True, superBot=None):
         success = True
         user['liked'] = 'super'
         print(f'super liking {Swypes.pretty_format_user(user)}')
@@ -352,6 +356,8 @@ class Swypes:
             self.normal_like_user(user, False)
             success = False
             if store_on_failure:
+                if superBot:
+                    superBot.msg_pending(user)
                 self.storage.mark_user_as_to_be_super_liked(user)
 
         return success
@@ -396,7 +402,7 @@ class Swypes:
 
         return successful_normal, successful_super
 
-    def rate_recommodations(self, recs, use_super_like=False):
+    def rate_recommodations(self, recs, use_super_like=False, bot=None, superBot=None):
         stats_liked = []
 
         for rec in recs:
@@ -409,7 +415,7 @@ class Swypes:
                 success = True
 
                 if meta.ethnicity == self.preference_for_super_like and use_super_like:
-                    success = self.super_like_user(user)
+                    success = self.super_like_user(user, superBot=superBot)
                     if success:
                         stats_liked.append(user)
                 else:
@@ -545,15 +551,52 @@ class Bot:
     def send(self):
         self.bot.send_message(chat_id=self.chat_id, text="I'm sorry Dave I'm afraid I can't do that.")
 
-    def trace_user_in_chat(user):
-        msg = '{}\n{}\n{}\n{}\n{}'.format(user["name"], user['birthdate'], user["id"],
-                                          'fetched: ' + user["fetch"],
-                                          'status: ' + user.get('liked'),
-                                          user["meta"].get("ethnicity"),
-                                          user['photos'][0],
-                                          user["bio"])
-        bot.bot.send_message(chat_id=CHAT_ID,
-                             text=msg)
+    def msg(self, user):
+        msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
+            .format(user["id"],
+                    user["name"],
+                    user['birthdate'],
+                    'fetched: ' + user["fetch"],
+                    'status: ' + user.get('liked'),
+                    user["meta"].get("ethnicity"),
+                    user["bio"],
+                    user['photos'][0])
+        self.bot.bot.send_message(chat_id=CHAT_ID,
+                                  text=msg)
+
+
+class SuperBot:
+    def __init__(self, token, chat_id):
+        self.chat_id = chat_id
+        self.bot = telegram.Bot(token=token)
+
+    def idle(self):
+        self.updater.idle()
+
+    def send(self):
+        self.bot.send_message(chat_id=self.chat_id, text="I'm sorry Dave I'm afraid I can't do that.")
+
+    def msg(self, user, add_info=''):
+        photos = ''
+        for p in photos:
+            photos = photos + '\n' + p
+
+        msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
+            .format(add_info,
+                    user["id"],
+                    user["name"],
+                    user['birthdate'],
+                    'fetched: ' + user["fetch"],
+                    'status: ' + user.get('liked'),
+                    user["bio"],
+                    user["meta"].get("ethnicity"),
+                    photos)
+
+        self.bot.bot.send_message(chat_id=CHAT_ID,
+                                  text=msg)
+
+    def msg_pending(self, user):
+        self.msg_pending(user, 'pending_user')
 
 
 if __name__ == '__main__':
@@ -610,6 +653,10 @@ if __name__ == '__main__':
     if USE_TELEGRAM:
         bot = Bot(token=TELEGRAM_BOT_LIKE_TOKEN, chat_id=CHAT_ID)
 
+    superBot = None
+    if USE_TELEGRAM_SUPER:
+        superBot = SuperBot(token=TELEGRAM_BOT_SUPER_TOKEN, chat_id=CHAT_ID)
+
     if FACEBOOK_USERNAME and FACEBOOK_PASSWORD:
         print('fetching fb token')
         username = enc.decode(ENC_KEY, FACEBOOK_USERNAME)
@@ -646,7 +693,12 @@ if __name__ == '__main__':
 
     def notify_chat(user):
         if bot:
-            bot.trace_user_in_chat(user)
+            bot.msg(user)
+
+
+    def notify_super_chat(user):
+        if superBot:
+            superBot.msg(user)
 
 
     print('\n\n ==== stats: =====\n')
@@ -662,7 +714,7 @@ if __name__ == '__main__':
     print('super liked: ')
     for user in [u for u in stats if u['liked'] == 'super']:
         print(Swypes.pretty_format_user(user))
-        notify_chat(user)
+        notify_super_chat(user)
 
     for u in super_liked:
         print(Swypes.pretty_format_user(u))
