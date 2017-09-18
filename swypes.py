@@ -392,7 +392,6 @@ class Swypes:
         u.get('match_prio') else 0)
         for user in pending_super:
             if do_super_like:
-                superBot.msg_pending(user)
                 success = self.super_like_user(user, store_on_failure=False)
             else:
                 success = self.normal_like_user(user, store_on_failure=False)
@@ -719,7 +718,7 @@ if __name__ == '__main__':
 
     for u in super_liked:
         print(Swypes.pretty_format_user(u))
-        notify_chat(u)
+        notify_super_chat(u)
 
     print('killing script')
     os.kill(os.getpid(), signal.SIGKILL)
