@@ -27,7 +27,7 @@ ENC_KEY = ''
 FACEBOOK_TOKEN = ''
 
 USE_TELEGRAM = False
-TELEGRAM_TOKEN = ''
+TELEGRAM_BOT_LIKE_TOKEN = ''
 CHAT_ID = ''
 
 DATABASE = 'swypes.json'
