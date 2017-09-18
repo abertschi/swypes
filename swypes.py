@@ -377,7 +377,7 @@ class Swypes:
 
         return success
 
-    def match_pending_users(self, do_super_like):
+    def match_pending_users(self, do_super_like, superBot=None):
         successful_super = []
         successful_normal = []
         pending = sorted(self.storage.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
@@ -392,6 +392,7 @@ class Swypes:
         u.get('match_prio') else 0)
         for user in pending_super:
             if do_super_like:
+                superBot.msg_pending(user)
                 success = self.super_like_user(user, store_on_failure=False)
             else:
                 success = self.normal_like_user(user, store_on_failure=False)
@@ -666,7 +667,7 @@ if __name__ == '__main__':
     swypes.tinder.fetch_token(FACEBOOK_TOKEN, FACEBOOK_ID)
     swypes.preference_for_super_like = args.super_like_ethnicity
     print('matching pending users... ')
-    normal_liked, super_liked = swypes.match_pending_users(do_super_like=not args.no_super_like)
+    normal_liked, super_liked = swypes.match_pending_users(do_super_like=not args.no_super_like, superBot=superBot)
 
     fetch_again = True
     stats = []
