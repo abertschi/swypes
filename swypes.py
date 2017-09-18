@@ -562,7 +562,7 @@ class Bot:
                     user["meta"].get("ethnicity"),
                     user["bio"],
                     user['photos'][0])
-        self.bot.bot.send_message(chat_id=CHAT_ID,
+        self.bot.send_message(chat_id=CHAT_ID,
                                   text=msg)
 
 
@@ -593,8 +593,8 @@ class SuperBot:
                     user["meta"].get("ethnicity"),
                     photos)
 
-        self.bot.bot.send_message(chat_id=CHAT_ID,
-                                  text=msg)
+        self.bot.send_message(chat_id=CHAT_ID,
+                              text=msg)
 
     def msg_pending(self, user):
         self.msg(user, 'pending_user')
