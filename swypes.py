@@ -563,7 +563,7 @@ class Bot:
                     user["bio"],
                     user['photos'][0])
         self.bot.send_message(chat_id=CHAT_ID,
-                                  text=msg)
+                              text=msg)
 
 
 class SuperBot:
@@ -579,7 +579,7 @@ class SuperBot:
 
     def msg(self, user, add_info=''):
         photos = ''
-        for p in photos:
+        for p in user['photos']:
             photos = photos + '\n' + p
 
         msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
