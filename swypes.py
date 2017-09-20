@@ -552,10 +552,11 @@ class Bot:
         self.bot.send_message(chat_id=self.chat_id, text="I'm sorry Dave I'm afraid I can't do that.")
 
     def msg(self, user):
-        msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
+        msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
             .format(user["id"],
                     user["name"],
                     user['birthdate'],
+                    'schools: ' + user['schools'],
                     'fetched: ' + user["fetch"],
                     'status: ' + user.get('liked'),
                     user["meta"].get("ethnicity"),
@@ -581,11 +582,12 @@ class SuperBot:
         for p in user['photos']:
             photos = photos + '\n' + p
 
-        msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
+        msg = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}' \
             .format(add_info,
                     user["id"],
                     user["name"],
                     user['birthdate'],
+                    'schools: ' + user['schools'],
                     'fetched: ' + user["fetch"],
                     'status: ' + user.get('liked'),
                     user["bio"],
