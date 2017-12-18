@@ -402,7 +402,7 @@ class Swypes:
 
         print('match again prio')
         for p in pending_super:
-            print(p.get('fetch'))
+            print(p.get('fetch') + p.get('name'))
 
         for user in pending_super:
             if do_super_like:
