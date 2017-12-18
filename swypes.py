@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, time
 from telegram.ext import Updater, CommandHandler
 import signal
 import telegram
+import numpy as np
 
 import logging
 
@@ -330,13 +331,14 @@ class Storage:
         self.again_super.update({'match_prio': max_prio}, self.Again_super_query.id == user_id)
 
     def get_pending_super_likes_by_match_prio(self):
-        return sorted(self.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
-        u.get('match_prio') else 0)
+        return Swypes.sorted_by_match_prio_and_fifo(self.again_super.all())
+        #return sorted(self.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        #u.get('match_prio') else 0)
 
     def get_pending_likes_by_match_prio(self):
-        return sorted(self.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
-        u.get('match_prio') else 0)
-
+        return Swypes.sorted_by_match_prio_and_fifo(self.again.all())
+        #return sorted(self.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
+        #u.get('match_prio') else 0)
 
 class Swypes:
     def __init__(self):
@@ -377,19 +379,26 @@ class Swypes:
 
         return success
 
+    @staticmethod
+    def sorted_by_match_prio_and_fifo(users):
+        prio = [u for u in users if u.get('match_prio')]
+        prio = sorted(prio, reverse=True, key=lambda u: u.get('match_prio') if u.get('match_prio') else 0)
+        no_prio = [u for u in users if not u.get('match_prio')]
+        no_prio = sorted(no_prio, reverse=True, key=lambda u: u.get('fetch') if u.get('fetch') else 0)
+        return np.append(prio, no_prio)
+
     def match_pending_users(self, do_super_like, superBot=None):
         successful_super = []
         successful_normal = []
-        pending = sorted(self.storage.again.all(), reverse=True, key=lambda u: u.get('match_prio') if
-        u.get('match_prio') else 0)
+        pending = self.sorted_by_match_prio_and_fifo(self.storage.again.all())
+
         for user in pending:
             success = self.normal_like_user(user)
             if not success: break
             self.storage.mark_user_as_liked(user)
             successful_normal.append(user)
 
-        pending_super = sorted(self.storage.again_super.all(), reverse=True, key=lambda u: u.get('match_prio') if
-        u.get('match_prio') else 0)
+        pending_super = self.sorted_by_match_prio_and_fifo(self.storage.again_super.all())
         for user in pending_super:
             if do_super_like:
                 success = self.super_like_user(user, store_on_failure=False)
