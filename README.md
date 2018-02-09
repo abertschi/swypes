@@ -29,7 +29,7 @@ optional arguments:
   --no-super-like USER-ID
   --prioritize USER-ID
   --download-pictures
-  --create-html CREATE_HTML Create html with entries X numbers back
+  --create-html CREATE_HTML Create html with entries X days back
 
 ```
   
