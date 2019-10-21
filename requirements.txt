@@ -10,5 +10,5 @@ robobrowser==0.5.3
 six==1.10.0
 tinydb==3.3.0
 urllib3==1.21.1
-Werkzeug==0.12.2
+Werkzeug==0.15.3
 numpy==1.13.3
